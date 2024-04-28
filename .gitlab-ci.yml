@@ -1,0 +1,53 @@
+before_script:
+  - echo 'in progress..'
+
+stages:
+  - build
+  - test
+  - package
+  - install  
+  - deploy  
+
+compile-17:
+  image: openjdk:17
+  stage: build
+  script:
+    - ./mvnw compile
+    
+compile-21:
+  image: openjdk:21
+  stage: build
+  script:
+    - ./mvnw compile
+
+test: 
+  image: openjdk:17
+  stage: test
+  script:
+    - ./mvnw test verify
+
+package:
+  image: openjdk:17
+  stage: package
+  script:
+    - ./mvnw clean package
+  artifacts:
+    paths:
+      - target/*.jar
+    expire_in: 7 day
+  dependencies:
+    - test
+
+docker-push-latest:
+  stage: install
+  image: docker:19
+  services:
+    - name: docker:dind
+      #alias: dind.demaniodg.it
+      #command: ["--registry-mirror", "http://repodocker.demaniodg.it"]    
+  dependencies:
+    - package
+  script: 
+    - docker build -f Dockerfile -t haushaus/prova1 .
+    - echo $REPO_DOCKER_PWD | docker login --username $REPO_DOCKER_USER --password-stdin
+    - docker push haushaus/prova1
